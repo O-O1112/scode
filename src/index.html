@@ -34,14 +34,15 @@
         <div class="section-title">快速開始</div>
         <div class="quick-actions">
           <button class="btn btn-primary" id="btn-home-new">+ 建立新專案</button>
-          <button class="btn" id="btn-home-open">開啟本機檔案 (Ctrl+O)</button>
+          <button class="btn" id="btn-home-folder">開啟本機資料夾</button>
+          <button class="btn" id="btn-home-open">開啟單一檔案 (Ctrl+O)</button>
           <button class="btn" id="btn-home-scratch">空白單檔速寫</button>
         </div>
       </section>
 
       <div class="home-grid">
         <section class="card">
-          <div class="section-title">近期專案</div>
+          <div class="section-title">本機專案庫 (IndexedDB)</div>
           <div class="recent-list" id="recent-list">
             <!-- 動態生成近期紀錄 -->
           </div>
@@ -50,10 +51,10 @@
         <section class="card">
           <div class="section-title">環境與支援</div>
           <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text-secondary);">
-            <div>- 支援語言：HTML5、Python (WASM)、Lua、JavaScript</div>
-            <div>- 核心引擎：Microsoft Monaco (深黑高對比 `hc-black`)</div>
+            <div>- 支援語言：HTML5、Python (WASM / 支援 input)、Lua、JavaScript</div>
+            <div>- 核心引擎：Microsoft Monaco (純黑白護眼 `mono-dark`)</div>
             <div>- 離線能力：已就緒 (PWA Service Worker 快取)</div>
-            <div>- 儲存整合：Chrome 原生 File System Access API</div>
+            <div>- 儲存整合：Chrome 原生資料夾雙向同步 (File System Access)</div>
           </div>
         </section>
       </div>
@@ -86,7 +87,7 @@
           </div>
           <div class="template-card" data-type="python">
             <div class="name">Python 程式專案</div>
-            <div class="desc">包含 main.py, README.md</div>
+            <div class="desc">包含 main.py (支援 input 與 WASM 執行)</div>
           </div>
           <div class="template-card" data-type="lua">
             <div class="name">Lua 腳本專案</div>
@@ -136,7 +137,7 @@
       <!-- 左側檔案總管 -->
       <aside class="file-sidebar" id="file-sidebar">
         <div class="sidebar-header">
-          <span>專案檔案 (可拖入)</span>
+          <span>檔案清單 (可拖入/右鍵)</span>
           <button class="btn btn-sm" id="btn-sidebar-add" style="padding: 2px 8px; font-size: 11px;">+ 新增</button>
         </div>
         <div class="file-list" id="file-list">
@@ -174,6 +175,7 @@
               </div>
             </div>
             <div style="display: flex; gap: 6px; align-items: center;">
+              <button class="btn btn-sm" id="btn-open-preview-tab" style="display: none; padding: 2px 8px; font-size: 11px;">新分頁開啟</button>
               <button class="btn btn-sm" id="btn-maximize-output" style="padding: 2px 8px; font-size: 11px;">全螢幕</button>
               <button class="btn btn-sm" id="btn-clear-output" style="padding: 2px 8px; font-size: 11px;">清空</button>
               <button class="btn btn-sm" id="btn-close-output" style="padding: 2px 8px; font-size: 11px;">關閉</button>
@@ -182,6 +184,13 @@
           <div class="output-body">
             <div id="console-log"></div>
             <iframe id="preview-frame" sandbox="allow-scripts allow-modals"></iframe>
+          </div>
+
+          <!-- 終端 REPL / Stdin 互動列 -->
+          <div class="repl-bar">
+            <span class="repl-prompt">&gt;</span>
+            <input type="text" id="repl-input" placeholder="輸入 JavaScript / Python 表達式進行即時求值...">
+            <button class="btn btn-sm" id="btn-repl-send" style="padding: 2px 10px; font-size: 11px;">執行</button>
           </div>
         </div>
       </main>
@@ -264,7 +273,7 @@
         </tr>
         <tr>
           <td><kbd>Ctrl</kbd> + <kbd>O</kbd></td>
-          <td>開啟本機檔案至工作區</td>
+          <td>開啟本機單一檔案</td>
         </tr>
         <tr>
           <td><kbd>Ctrl</kbd> + <kbd>Enter</kbd></td>
@@ -275,12 +284,19 @@
           <td>折疊 / 展開左側檔案導覽面板</td>
         </tr>
         <tr>
+          <td><kbd>F2</kbd></td>
+          <td>為目前編輯之檔案重新命名</td>
+        </tr>
+        <tr>
           <td><kbd>F1</kbd></td>
           <td>開啟或關閉此快捷鍵指南</td>
         </tr>
       </table>
     </div>
   </div>
+
+  <!-- 右鍵選單容器 -->
+  <div id="file-context-menu" class="context-menu hidden"></div>
 
   <!-- 降級本機開檔 Input -->
   <input type="file" id="file-input-hidden" style="display: none;">

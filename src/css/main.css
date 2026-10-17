@@ -392,7 +392,7 @@ body {
   gap: 10px;
 }
 .file-sidebar {
-  width: 230px;
+  width: 240px;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -541,7 +541,7 @@ body {
 
 /* 輸出與預覽抽屜面板 */
 .output-drawer {
-  height: 230px;
+  height: 250px;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -602,6 +602,69 @@ body {
   flex: 1;
   border: none;
   background-color: #ffffff;
+}
+
+/* 終端 REPL 交互列 */
+.repl-bar {
+  height: 32px;
+  background-color: #060606;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 8px;
+}
+.repl-prompt {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #777777;
+  font-weight: bold;
+}
+#repl-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+}
+
+/* 右鍵選單 */
+.context-menu {
+  position: fixed;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+}
+.context-menu.hidden {
+  display: none !important;
+}
+.menu-item {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.1s;
+}
+.menu-item:hover {
+  background-color: var(--bg-hover);
+}
+.menu-item.danger:hover {
+  background-color: #ff4757;
+  color: #ffffff;
+}
+.menu-separator {
+  height: 1px;
+  background-color: var(--border-subtle);
+  margin: 4px 0;
 }
 
 /* 模態視窗 (Modal) */

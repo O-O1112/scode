@@ -1,14 +1,13 @@
 /**
- * MonoCode 應用程式主邏輯與視圖調度器 (全面版)
+ * MonoCode 應用程式主邏輯與視圖調度器 (完整原生工程版)
  */
 const App = {
   currentProject: null,
   activeView: "home", // 'home' | 'wizard' | 'workspace'
   selectedTemplateType: "web",
   deferredInstallPrompt: null,
-  autoSaveTimer: null,
 
-  init() {
+  async init() {
     this.bindDomElements();
     this.registerServiceWorker();
     this.initViews();
@@ -21,10 +20,10 @@ const App = {
     EditorManager.init(
       document.getElementById("monaco-container"),
       document.getElementById("tab-bar"),
-      () => {
-        const saved = Storage.getCurrentProject();
-        if (saved) {
-          this.loadProjectIntoWorkspace(saved);
+      async () => {
+        const activeProj = await Storage.getActiveProject();
+        if (activeProj) {
+          this.loadProjectIntoWorkspace(activeProj);
         } else {
           this.switchView("home");
         }
@@ -88,7 +87,6 @@ const App = {
   },
 
   bindDomElements() {
-    // 視圖容器
     this.views = {
       home: document.getElementById("view-home"),
       wizard: document.getElementById("view-wizard"),
@@ -98,6 +96,7 @@ const App = {
     // 主頁元素
     this.btnNewProject = document.getElementById("btn-home-new");
     this.btnOpenFile = document.getElementById("btn-home-open");
+    this.btnOpenFolder = document.getElementById("btn-home-folder");
     this.btnScratch = document.getElementById("btn-home-scratch");
     this.recentListEl = document.getElementById("recent-list");
     this.fileInputHidden = document.getElementById("file-input-hidden");
@@ -173,8 +172,10 @@ const App = {
     }
 
     if (btnClearData) {
-      btnClearData.addEventListener("click", () => {
-        if (confirm("確定要清空所有本機暫存專案？這將移除 IndexedDB / LocalStorage 的快取紀錄。")) {
+      btnClearData.addEventListener("click", async () => {
+        if (confirm("確定要清空所有本機暫存專案與設定？此動作將清除全部 IndexedDB 專案。")) {
+          const dbs = await window.indexedDB.databases();
+          dbs.forEach((db) => window.indexedDB.deleteDatabase(db.name));
           localStorage.clear();
           location.reload();
         }
@@ -201,6 +202,9 @@ const App = {
     // 主頁事件
     this.btnNewProject.addEventListener("click", () => this.switchView("wizard"));
     this.btnOpenFile.addEventListener("click", () => this.openLocalFile());
+    if (this.btnOpenFolder) {
+      this.btnOpenFolder.addEventListener("click", () => this.openLocalDirectory());
+    }
     this.btnScratch.addEventListener("click", () => this.createScratchProject());
     if (this.btnHomeShortcuts) {
       this.btnHomeShortcuts.addEventListener("click", () => this.toggleShortcutsModal(true));
@@ -223,8 +227,10 @@ const App = {
     this.btnCreateCancel.addEventListener("click", () => this.switchView("home"));
 
     // 工作區事件
-    this.btnBackHome.addEventListener("click", () => {
-      Storage.setCurrentProject(this.currentProject);
+    this.btnBackHome.addEventListener("click", async () => {
+      if (this.currentProject) {
+        await Storage.saveProject(this.currentProject);
+      }
       this.switchView("home");
     });
     this.btnSave.addEventListener("click", () => this.saveCurrentFile());
@@ -232,19 +238,19 @@ const App = {
       this.btnExport.addEventListener("click", () => this.exportProjectZip());
     }
     this.btnRun.addEventListener("click", () => this.runCurrentProject());
-    this.btnAddFile.addEventListener("click", () => this.promptAddFile());
+    this.btnAddFile.addEventListener("click", () => FileTree.showInlineCreate());
     this.btnToggleSidebar.addEventListener("click", () => this.toggleSidebar());
     this.btnCloseOutput.addEventListener("click", () => Runner.hide());
     this.btnClearOutput.addEventListener("click", () => Runner.clearLog());
 
     // 專案名稱點擊重新命名
-    this.projectNameTag.addEventListener("click", () => {
+    this.projectNameTag.addEventListener("click", async () => {
       if (!this.currentProject) return;
       const newName = prompt("重新命名專案：", this.currentProject.name);
       if (newName && newName.trim()) {
         this.currentProject.name = newName.trim();
         this.projectNameTag.textContent = this.currentProject.name;
-        Storage.setCurrentProject(this.currentProject);
+        await Storage.saveProject(this.currentProject);
       }
     });
 
@@ -273,9 +279,20 @@ const App = {
         this.toggleSettingsModal(false);
       }
     });
+
+    window.addEventListener("keydown", (e) => {
+      // F2 鍵為目前編輯檔案重新命名
+      if (e.key === "F2" && this.activeView === "workspace" && FileTree.activeFile) {
+        e.preventDefault();
+        const activeNode = document.querySelector(".file-node.active");
+        if (activeNode) {
+          FileTree.startInlineRename(FileTree.activeFile, activeNode);
+        }
+      }
+    });
   },
 
-  switchView(viewName) {
+  async switchView(viewName) {
     this.activeView = viewName;
     Object.keys(this.views).forEach((key) => {
       if (key === viewName) {
@@ -286,7 +303,7 @@ const App = {
     });
 
     if (viewName === "home") {
-      this.renderRecentProjects();
+      await this.renderRecentProjects();
     } else if (viewName === "wizard") {
       this.inputProjectName.value = "my-project";
       this.updateWizardPreview();
@@ -297,12 +314,12 @@ const App = {
     }
   },
 
-  renderRecentProjects() {
-    const list = Storage.getRecentProjects();
+  async renderRecentProjects() {
+    const list = await Storage.getAllProjects();
     this.recentListEl.innerHTML = "";
 
     if (list.length === 0) {
-      this.recentListEl.innerHTML = '<div class="empty-hint">暫無近期專案紀錄</div>';
+      this.recentListEl.innerHTML = '<div class="empty-hint">暫無本機專案紀錄</div>';
       return;
     }
 
@@ -310,30 +327,42 @@ const App = {
       const item = document.createElement("div");
       item.className = "recent-item";
 
+      const infoWrap = document.createElement("div");
+      infoWrap.style.display = "flex";
+      infoWrap.style.flexDirection = "column";
+      infoWrap.style.gap = "2px";
+
       const title = document.createElement("span");
       title.className = "title";
-      title.textContent = p.name + " (" + p.type + ")";
+      const fileCount = p.files ? Object.keys(p.files).length : 0;
+      title.textContent = `${p.name} [${p.type}] (${fileCount} 個檔案)`;
 
       const date = document.createElement("span");
       date.className = "date";
-      date.textContent = new Date(p.updatedAt).toLocaleDateString();
+      date.textContent = new Date(p.updatedAt).toLocaleString();
 
-      item.appendChild(title);
-      item.appendChild(date);
+      infoWrap.appendChild(title);
+      infoWrap.appendChild(date);
+      item.appendChild(infoWrap);
 
-      item.addEventListener("click", () => {
-        const saved = Storage.getCurrentProject();
-        if (saved && saved.id === p.id) {
-          this.loadProjectIntoWorkspace(saved);
-        } else {
-          const tmpl = Templates[p.type] || Templates.web;
-          const proj = {
-            id: p.id,
-            name: p.name,
-            type: p.type,
-            files: Object.assign({}, tmpl.files)
-          };
-          this.loadProjectIntoWorkspace(proj);
+      const delBtn = document.createElement("button");
+      delBtn.className = "btn btn-sm";
+      delBtn.textContent = "刪除";
+      delBtn.style.padding = "2px 8px";
+      delBtn.style.fontSize = "11px";
+      delBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (confirm(`確定要從資料庫中刪除專案「${p.name}」？`)) {
+          await Storage.deleteProject(p.id);
+          this.renderRecentProjects();
+        }
+      });
+      item.appendChild(delBtn);
+
+      item.addEventListener("click", async () => {
+        const fullProj = await Storage.getProjectById(p.id);
+        if (fullProj) {
+          this.loadProjectIntoWorkspace(fullProj);
         }
       });
 
@@ -353,7 +382,7 @@ const App = {
     this.previewBoxEl.textContent = preview;
   },
 
-  submitCreateProject() {
+  async submitCreateProject() {
     const name = this.inputProjectName.value.trim() || "untitled-project";
     const tmpl = Templates[this.selectedTemplateType] || Templates.web;
 
@@ -364,25 +393,26 @@ const App = {
       files: Object.assign({}, tmpl.files)
     };
 
-    Storage.setCurrentProject(newProject);
+    await Storage.saveProject(newProject);
     this.loadProjectIntoWorkspace(newProject);
   },
 
-  createScratchProject() {
+  async createScratchProject() {
     const scratchProject = {
       id: Date.now().toString(),
-      name: "速寫檔案",
+      name: "速寫專案",
       type: "python",
       files: {
-        "scratch.py": '# 速寫 Python 腳本\nprint("Hello World")\n'
+        "scratch.py": '# 速寫 Python 腳本 (支援 input() 與 WASM 原生執行)\nname = input("請輸入您的名字：")\nprint(f"你好, {name}！歡迎使用 MonoCode。")\n'
       }
     };
-    Storage.setCurrentProject(scratchProject);
+    await Storage.saveProject(scratchProject);
     this.loadProjectIntoWorkspace(scratchProject);
   },
 
   loadProjectIntoWorkspace(project) {
     this.currentProject = project;
+    Storage.setActiveProjectId(project.id);
     this.projectNameTag.textContent = project.name;
     FileTree.setProject(project);
 
@@ -392,13 +422,6 @@ const App = {
     }
 
     this.switchView("workspace");
-  },
-
-  promptAddFile() {
-    const filename = prompt("請輸入新增檔案名稱 (例如: helper.py 或 style2.css):");
-    if (filename && filename.trim()) {
-      FileTree.addFile(filename.trim(), "");
-    }
   },
 
   toggleSidebar() {
@@ -449,7 +472,7 @@ const App = {
           }
         };
 
-        Storage.setCurrentProject(project);
+        await Storage.saveProject(project);
         this.loadProjectIntoWorkspace(project);
       } catch (err) {
         if (err.name !== "AbortError") console.error("開啟檔案失敗：", err);
@@ -460,12 +483,54 @@ const App = {
     }
   },
 
+  async openLocalDirectory() {
+    if (!window.showDirectoryPicker) {
+      alert("您的瀏覽器暫不支援直接選取資料夾，請使用「開啟本機檔案」或拖曳檔案匯入。");
+      return;
+    }
+    try {
+      const dirHandle = await window.showDirectoryPicker();
+      const files = {};
+
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind === "file") {
+          try {
+            const f = await entry.getFile();
+            // 讀取常見代碼與文字檔案
+            if (f.size < 5 * 1024 * 1024) {
+              files[entry.name] = await f.text();
+            }
+          } catch (e) {
+            console.warn("無法讀取檔案", entry.name, e);
+          }
+        }
+      }
+
+      if (Object.keys(files).length === 0) {
+        files["index.txt"] = "此本機資料夾無可讀文字檔案";
+      }
+
+      const project = {
+        id: Date.now().toString(),
+        name: dirHandle.name,
+        type: "directory",
+        dirHandle: dirHandle,
+        files: files
+      };
+
+      await Storage.saveProject(project);
+      this.loadProjectIntoWorkspace(project);
+    } catch (err) {
+      if (err.name !== "AbortError") console.error("開啟本機資料夾失敗：", err);
+    }
+  },
+
   handleFallbackFileInput(e) {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const project = {
         id: Date.now().toString(),
         name: file.name,
@@ -474,7 +539,7 @@ const App = {
           [file.name]: event.target.result
         }
       };
-      Storage.setCurrentProject(project);
+      await Storage.saveProject(project);
       this.loadProjectIntoWorkspace(project);
     };
     reader.readAsText(file);
@@ -485,8 +550,9 @@ const App = {
 
     const activeFileName = FileTree.activeFile;
     const content = EditorManager.getValue();
-    FileTree.setFileContent(activeFileName, content);
+    await FileTree.setFileContent(activeFileName, content);
 
+    // 若有單一檔案控制代碼
     if (this.currentProject.fileHandle && window.showSaveFilePicker) {
       try {
         const writable = await this.currentProject.fileHandle.createWritable();
@@ -495,10 +561,22 @@ const App = {
         alert(`已成功儲存至本機檔案：${activeFileName}`);
         return;
       } catch (e) {
-        console.warn("直接本機儲存失敗，降級為另存檔案", e);
+        console.warn("直接儲存至檔案代碼失敗，轉為一般儲存", e);
       }
     }
 
+    // 若為資料夾連動模式，FileTree.setFileContent 已自動寫回實體檔案
+    if (this.currentProject.dirHandle) {
+      const statusCursor = document.getElementById("status-cursor");
+      if (statusCursor) {
+        const old = statusCursor.textContent;
+        statusCursor.textContent = "已同步儲存至 Chromebook 本機磁碟！";
+        setTimeout(() => { statusCursor.textContent = old; }, 2000);
+      }
+      return;
+    }
+
+    // 瀏覽器下載另存
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);

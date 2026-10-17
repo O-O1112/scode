@@ -1,5 +1,5 @@
 /**
- * 建置與執行輸出台管理器 (支援 HTML5 沙盒、JavaScript、Python WASM、Lua 引擎與分頁視圖切換)
+ * 建置與執行輸出台管理器 (支援真實 Python 互動 input、Lua 執行、外開分頁預覽、REPL 表達式求值)
  */
 const Runner = {
   outputDrawerEl: null,
@@ -9,9 +9,13 @@ const Runner = {
   tabConsoleBtn: null,
   tabPreviewBtn: null,
   btnMaximizeEl: null,
+  btnOpenTabEl: null,
+  replInputEl: null,
+  btnReplSendEl: null,
   pyodideInstance: null,
   isMaximized: false,
-  activeOutputTab: "console", // 'console' | 'preview'
+  activeOutputTab: "console",
+  lastCompiledHtml: "",
 
   init() {
     this.outputDrawerEl = document.getElementById("output-drawer");
@@ -21,8 +25,10 @@ const Runner = {
     this.tabConsoleBtn = document.getElementById("tab-output-console");
     this.tabPreviewBtn = document.getElementById("tab-output-preview");
     this.btnMaximizeEl = document.getElementById("btn-maximize-output");
+    this.btnOpenTabEl = document.getElementById("btn-open-preview-tab");
+    this.replInputEl = document.getElementById("repl-input");
+    this.btnReplSendEl = document.getElementById("btn-repl-send");
 
-    // 監聽來自沙盒 iframe 的訊息
     window.addEventListener("message", (event) => {
       if (event.data && event.data.type === "MONOCODE_LOG") {
         this.appendLog(event.data.level, event.data.message);
@@ -36,6 +42,20 @@ const Runner = {
 
     if (this.btnMaximizeEl) {
       this.btnMaximizeEl.addEventListener("click", () => this.toggleMaximize());
+    }
+
+    if (this.btnOpenTabEl) {
+      this.btnOpenTabEl.addEventListener("click", () => this.openPreviewInNewTab());
+    }
+
+    if (this.btnReplSendEl && this.replInputEl) {
+      this.btnReplSendEl.addEventListener("click", () => this.evalReplInput());
+      this.replInputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          this.evalReplInput();
+        }
+      });
     }
   },
 
@@ -97,6 +117,8 @@ const Runner = {
     } else if (level === "success") {
       line.style.color = "#ffffff";
       line.style.fontWeight = "bold";
+    } else if (level === "input") {
+      line.style.color = "#4ec9b0";
     } else {
       line.style.color = "#cccccc";
     }
@@ -118,6 +140,48 @@ const Runner = {
       s.onerror = () => reject(new Error(`載入依賴腳本失敗: ${src}`));
       document.head.appendChild(s);
     });
+  },
+
+  openPreviewInNewTab() {
+    if (!this.lastCompiledHtml) {
+      alert("尚未建置網頁，請先點選「執行 / 建置」。");
+      return;
+    }
+    const blob = new Blob([this.lastCompiledHtml], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  },
+
+  async evalReplInput() {
+    const raw = this.replInputEl.value.trim();
+    if (!raw) return;
+    this.replInputEl.value = "";
+    this.appendLog("input", `> ${raw}`);
+
+    const activeProj = window.App ? window.App.currentProject : null;
+    const isPython = activeProj && (activeProj.type === "python" || (window.FileTree && window.FileTree.activeFile && window.FileTree.activeFile.endsWith(".py")));
+
+    if (isPython) {
+      if (!this.pyodideInstance) {
+        this.appendLog("warn", "請先點選一次「執行」啟動 Python 引擎");
+        return;
+      }
+      try {
+        const res = await this.pyodideInstance.runPythonAsync(raw);
+        if (res !== undefined) {
+          this.appendLog("info", String(res));
+        }
+      } catch (err) {
+        this.appendLog("error", err.message || String(err));
+      }
+    } else {
+      try {
+        const res = eval(raw);
+        this.appendLog("info", String(res));
+      } catch (err) {
+        this.appendLog("error", err.message || String(err));
+      }
+    }
   },
 
   async runProject(project) {
@@ -152,6 +216,7 @@ const Runner = {
 
   runWeb(project) {
     if (this.tabPreviewBtn) this.tabPreviewBtn.style.display = "inline-flex";
+    if (this.btnOpenTabEl) this.btnOpenTabEl.style.display = "inline-flex";
     this.switchOutputTab("preview");
     this.outputTitleEl.textContent = "HTML5 沙盒即時預覽";
 
@@ -193,12 +258,14 @@ const Runner = {
     `;
 
     html = html.replace("</body>", `${injectScript}</body>`);
+    this.lastCompiledHtml = html;
     this.previewFrameEl.srcdoc = html;
-    this.appendLog("success", "建置完成，沙盒畫面已更新。");
+    this.appendLog("success", "建置完成，沙盒畫面已更新。可點選「新視窗開啟」展開完整測試。");
   },
 
   runJavaScript(project, activeFile) {
     if (this.tabPreviewBtn) this.tabPreviewBtn.style.display = "none";
+    if (this.btnOpenTabEl) this.btnOpenTabEl.style.display = "none";
     this.switchOutputTab("console");
     this.outputTitleEl.textContent = `JavaScript 執行 (${activeFile})`;
 
@@ -225,6 +292,7 @@ const Runner = {
 
   async runPython(project, activeFile) {
     if (this.tabPreviewBtn) this.tabPreviewBtn.style.display = "none";
+    if (this.btnOpenTabEl) this.btnOpenTabEl.style.display = "none";
     this.switchOutputTab("console");
     this.outputTitleEl.textContent = `Python (WASM) 執行環境 (${activeFile})`;
 
@@ -238,14 +306,19 @@ const Runner = {
 
     try {
       if (!this.pyodideInstance) {
-        this.appendLog("info", "首次執行正在載入 Pyodide (Python 3.11 WASM 引擎)，請稍候...");
+        this.appendLog("info", "首次執行正在載入 Pyodide (Python 3.11 WASM 引擎)...");
         await this.loadScript("https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js");
         
         this.pyodideInstance = await loadPyodide({
           stdout: (text) => this.appendLog("info", text),
-          stderr: (text) => this.appendLog("error", text)
+          stderr: (text) => this.appendLog("error", text),
+          stdin: () => {
+            const inputVal = prompt("Python input() 要求輸入：");
+            this.appendLog("input", `[輸入] ${inputVal || ""}`);
+            return (inputVal !== null ? inputVal : "") + "\n";
+          }
         });
-        this.appendLog("success", "Python WASM 核心已就緒！");
+        this.appendLog("success", "Python WASM 核心已就緒，已掛載互動式 stdin/input()！");
       }
 
       this.appendLog("info", `執行中：${targetFile}...`);
@@ -258,6 +331,7 @@ const Runner = {
 
   async runLua(project, activeFile) {
     if (this.tabPreviewBtn) this.tabPreviewBtn.style.display = "none";
+    if (this.btnOpenTabEl) this.btnOpenTabEl.style.display = "none";
     this.switchOutputTab("console");
     this.outputTitleEl.textContent = `Lua 虛擬機 (${activeFile})`;
 
@@ -271,7 +345,7 @@ const Runner = {
 
     try {
       if (!window.fengari) {
-        this.appendLog("info", "首次執行正在載入 Fengari Lua 引擎，請稍候...");
+        this.appendLog("info", "首次執行正在載入 Fengari Lua 引擎...");
         await this.loadScript("https://cdn.jsdelivr.net/npm/fengari-web@0.1.4/dist/fengari-web.min.js");
         this.appendLog("success", "Lua 引擎載入成功！");
       }

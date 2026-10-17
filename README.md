@@ -1,90 +1,46 @@
-# MonoCode — 極簡黑白程式工作台 (Production Ready)
+# MonoCode — 極簡黑白程式工作台 (Production Real Engine)
 
 MonoCode 是一款專為 Chrome OS Flex、低硬體規格裝置與極簡主義開發者設計的開源 Web 程式碼工作台。
 
-核心設計哲學：**純黑白、圓潤、高對比、零干擾、無表情符號、無廣告**。
+核心設計哲學：**純黑白、圓潤、高對比、零干擾、無表情符號、無廣告、零空殼展示**。
 
 ---
 
-## 全面完備功能清單
+## 真正可用之全實體架構
 
-### 1. 圓潤黑白視覺與使用者體驗（Rounded Monochrome UX）
-* **高對比深色介面**：深黑背景（`#000000`）與純白高對比文字。
-* **柔和圓角系統**：全域膠囊按鈕（`border-radius: 9999px`）、圓潤卡片（`14px~16px`）與懸浮面板（`12px`）。
-* **極簡過渡遮罩**：整合 Monaco 編輯器核心載入骨架遮罩，平滑淡出，無突兀空白。
+### 1. 完整 IndexedDB 本機資料庫（非空殼範本還原）
+* 所有的專案均以實體結構持久化於瀏覽器 IndexedDB 中。
+* 跨專案切換時，所有新增檔案、程式碼修改、修改時間與專案狀態 **100% 完整保留還原**，絕不退回預設空白範本。
+* 主頁提供專案獨立刪除功能，自由管理專案庫存。
 
-### 2. 三大核心視圖架構（SPA）
-* **主頁（Home Dashboard）**：
-  * 快速開始（新建專案、開啟本機檔案、空白單檔速寫）。
-  * 一鍵安裝至本機（PWA 原生 `beforeinstallprompt` 按鈕）。
-  * 即時網路連線監測（`ONLINE` / `OFFLINE` 動態切換）。
-  * 近期專案歷史清單（IndexedDB / LocalStorage 本地持久化）。
-* **專案建立精靈（Project Wizard）**：
-  * 4 種內建範本：HTML5 網頁應用、Python 專案、Lua 腳本、JavaScript 模組。
-  * 即時 ASCII 檔案結構動態預覽。
-* **工作區與建置編輯頁（Workspace / Build & Run）**：
-  * Microsoft Monaco 編輯器核心（深黑高對比 `hc-black` 主題）。
-  * 多檔案標籤頁（Tabs）管理。
-  * 底部狀態列即時顯示游標行列（`Ln X, Col Y`）、編碼（`UTF-8`）與語言狀態。
-  * 點擊頂部專案名稱可隨時重新命名。
+### 2. 本機實體資料夾雙向同步（Chrome OS Flex 最佳實踐）
+* 支援點擊「**開啟本機資料夾**」（W3C `showDirectoryPicker` API），直接連動 Chromebook「檔案」應用程式內的實體資料夾。
+* 在側邊欄編輯、新增或更名時，自動即時寫入本機硬碟檔案，體驗與桌面級 IDE 完全一致。
 
-### 3. 完整檔案樹操作（File Tree Operations）
-* **檔案新增與刪除**。
-* **檔案重新命名**：在檔案節點點擊「改名」或雙擊檔案名稱即可直接更名。
-* **單檔獨立下載**：支援單獨下載當前選定檔案至本機。
-* **拖曳匯入（Drag & Drop）**：直接將本機檔案拖入左側檔案列表，自動載入至專案結構中。
-* **專案整包匯出（ZIP Export）**：整合 JSZip，點擊頂部 `[匯出 ZIP]` 一鍵下載全專案壓縮檔。
+### 3. 真實直譯與互動執行引擎
+* **Python (WASM / 支援 `input()`)**：
+  * 整合 Pyodide 核心，真正支援 `input("請輸入名字：")` 互動輸入。
+  * 支援標準函式庫運算與數值分析，完全在瀏覽器本地執行，免裝 Python 環境。
+* **Lua (Fengari 虛擬機)**：
+  * 本地執行 Lua 腳本，輸出即時串流至終端。
+* **HTML5 網頁應用**：
+  * 隔離沙盒即時預覽，支援「**新分頁開啟**」按鈕，可在獨立瀏覽器分頁使用開發者工具除錯。
+* **終端 REPL / Stdin 輸入列**：
+  * 輸出抽屜底部配備互動輸入列，支援直接輸入 JavaScript / Python 表達式即時求值。
 
-### 4. 瀏覽器原生執行與建置引擎（Zero-Dependency WASM Engines）
-* **HTML5 網頁專案**：沙盒隔離 iframe 即時預覽，自動劫持並輸出 `console.log` / `console.error`。
-* **Python 程式**：內建 Pyodide (Python 3.11 WebAssembly 核心)，直接在瀏覽器執行標準 Python 程式碼，不需本機安裝 Python。
-* **Lua 腳本**：內建 Fengari Lua 虛擬機，直接執行 Lua 腳本並輸出至終端。
-* **JavaScript 程式**：沙盒隔離執行並捕獲標準輸出。
-* **建置抽屜進階功能**：支援主控台與預覽畫面分頁切換、一鍵全螢幕展開（Maximize）以及毫秒級執行計時。
+### 4. 現代編輯器工作流（拒絕原生 prompt 彈窗）
+* **行內即時新建與改名**：
+  * 點擊 `+ 新增` 直接在檔案列表中出現行內輸入框，按 `Enter` 確認，按 `Esc` 取消。
+  * 雙擊檔案名稱或按 `F2` 直接在檔案節點就地改名。
+* **自訂黑白右鍵選單（Context Menu）**：
+  * 在檔案節點點選右鍵，呼叫圓潤深色選單（重新命名、下載單檔、刪除檔案）。
+* **整包 ZIP 匯出與拖曳匯入**：
+  * 可直接將電腦中的檔案拖入側邊欄匯入；點選頂部 `[匯出 ZIP]` 一鍵打包全專案下載。
 
-### 5. 偏好設定中心（Settings Modal）
-* **字體大小**：12px ~ 20px 即時無縫縮放。
-* **縮排寬度**：2 空格 / 4 空格切換。
-* **自動折行**：開啟 / 關閉切換。
-* **迷你地圖（Minimap）**：開啟 / 關閉代碼縮圖。
-* **代碼自動格式化**：一鍵美化排版當前檔案。
-* **重置快取**：清空本機暫存歷史。
-
----
-
-## 專案結構
-
-```text
-minimal-code-editor/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml             # GitHub Actions 自動測試與 GitHub Pages 部署
-├── README.md                      # 完整產品說明與架構手冊
-├── docker-compose.yml             # 本地 Nginx 預覽容器
-├── .env.example                   # 環境變數設定
-├── docs/
-│   ├── implementation_plan/       # 架構實作計畫歸檔
-│   ├── walkthrough/               # 建置成果與更新記錄歸檔
-│   └── spec/                      # 系統規格與快捷鍵清單
-├── src/
-│   ├── index.html                 # 單頁應用主容器 (SPA)
-│   ├── manifest.json              # PWA 清單
-│   ├── sw.js                      # 離線快取 Service Worker
-│   ├── css/
-│   │   └── main.css               # 圓潤黑白極簡樣式
-│   ├── js/
-│   │   ├── app.js                 # 視圖切換、PWA 安裝與設定調度
-│   │   ├── storage.js             # 本地持久化 (LocalStorage & IndexedDB)
-│   │   ├── templates.js           # 專案範本產生器
-│   │   ├── file-tree.js           # 檔案樹、改名、單檔下載與拖曳匯入
-│   │   ├── editor.js              # Monaco 編輯器核心與動態設定更新
-│   │   ├── runner.js              # 建置、執行抽屜 (WASM Pyodide & Fengari)
-│   │   └── shortcuts.js           # 鍵盤快捷鍵調度
-│   └── assets/
-│       └── icon.svg               # 黑白幾何圓角圖標
-└── tests/
-    └── smoke.test.js              # 6 項關鍵架構規格冒煙測試
-```
+### 5. 視覺體系：純黑白極簡護眼（Mono Dark）
+* 徹底告別微軟高對比主題的刺眼亮黃色底塊。
+* 背景採用純黑（`#000000`），文字採用柔和的灰白階層排版（`#ffffff`、`#cccccc`、`#888888`）。
+* 設定中支援在 **極簡純黑白 (Mono Dark)** 與 **經典暗色 (VS Code Dark)** 間自由切換。
 
 ---
 
@@ -92,10 +48,11 @@ minimal-code-editor/
 
 | 快捷鍵 | 作用範圍 | 說明 |
 | :--- | :--- | :--- |
-| `Ctrl + S` / `Cmd + S` | 工作區 | 儲存當前檔案至本機磁碟 |
-| `Ctrl + O` / `Cmd + O` | 全域 | 開啟本機檔案並載入工作區 |
+| `Ctrl + S` / `Cmd + S` | 工作區 | 儲存當前檔案（實體資料夾模式自動同步硬碟） |
+| `Ctrl + O` / `Cmd + O` | 全域 | 開啟本機單一檔案 |
 | `Ctrl + Enter` | 工作區 | 觸發目前專案的「建置與執行」流程 |
-| `Ctrl + B` | 工作區 | 切換左側檔案導覽面板（顯示 / 隱藏） |
+| `Ctrl + B` | 工作區 | 折疊 / 展開左側檔案導覽面板 |
+| `F2` | 工作區 | 為目前編輯之檔案就地重新命名 |
 | `F1` | 全域 | 開啟 / 關閉快捷鍵指南模態視窗 |
 | `Escape` | 全域 | 關閉任何開啟之彈出視窗 |
 
@@ -109,4 +66,5 @@ node tests/smoke.test.js
 ```
 
 ### GitHub Pages 自動部署
-本專案已包含 `.github/workflows/deploy.yml`。將程式碼推送至 GitHub 的 `main` 分支後，GitHub Actions 將會自動執行冒煙測試並直接上架發布至 GitHub Pages！
+推送到 GitHub 的 `main` 分支後，GitHub Actions 自動完成冒煙測試與上架發布。
+線上正式網址：**https://o-o1112.github.io/scode/**
