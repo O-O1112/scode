@@ -1,13 +1,15 @@
 /**
- * Monaco 編輯器核心與分頁標籤管理模組 (支援自訂黑白極簡主題與主題切換)
+ * Monaco 編輯器核心與分頁標籤管理模組 (正式版：含未儲存狀態指示點、空分頁占位與快速鍵支援)
  */
 const EditorManager = {
   editor: null,
   containerEl: null,
   tabBarEl: null,
+  emptyPlaceholderEl: null,
   openTabs: [], // array of filenames
   activeTab: null,
   models: {}, // filename -> monaco model
+  dirtySet: new Set(), // set of unsaved filenames
 
   extToLang: {
     html: "html",
@@ -25,6 +27,7 @@ const EditorManager = {
   init(containerEl, tabBarEl, onReady) {
     this.containerEl = containerEl;
     this.tabBarEl = tabBarEl;
+    this.emptyPlaceholderEl = document.getElementById("editor-empty-state");
 
     const settings = window.Storage ? Storage.getSettings() : {
       fontSize: 14,
@@ -39,7 +42,7 @@ const EditorManager = {
     });
 
     require(["vs/editor/editor.main"], () => {
-      // 註冊純黑白極簡護眼主題 (徹底移除微軟高對比的螢光黃底色)
+      // 註冊純黑白極簡護眼主題
       monaco.editor.defineTheme("mono-dark", {
         base: "vs-dark",
         inherit: false,
@@ -92,7 +95,6 @@ const EditorManager = {
         suggestOnTriggerCharacters: true
       });
 
-      // 監聽光標位置更新狀態列
       this.editor.onDidChangeCursorPosition((e) => {
         const statusCursor = document.getElementById("status-cursor");
         if (statusCursor) {
@@ -104,7 +106,6 @@ const EditorManager = {
         if (this.editor) this.editor.layout();
       });
 
-      // 隱藏編輯器載入遮罩
       const loadingOverlay = document.getElementById("editor-loading-overlay");
       if (loadingOverlay) {
         loadingOverlay.style.opacity = "0";
@@ -136,6 +137,10 @@ const EditorManager = {
   openFile(filename, content) {
     if (!this.editor) return;
 
+    if (this.emptyPlaceholderEl) {
+      this.emptyPlaceholderEl.style.display = "none";
+    }
+
     if (!this.openTabs.includes(filename)) {
       this.openTabs.push(filename);
     }
@@ -149,6 +154,7 @@ const EditorManager = {
       model.onDidChangeContent(() => {
         if (window.FileTree) {
           FileTree.setFileContent(filename, model.getValue());
+          this.markDirty(filename);
         }
       });
       this.models[filename] = model;
@@ -165,19 +171,44 @@ const EditorManager = {
     }
   },
 
+  markDirty(filename) {
+    this.dirtySet.add(filename);
+    this.renderTabs();
+  },
+
+  markSaved(filename) {
+    this.dirtySet.delete(filename);
+    this.renderTabs();
+  },
+
   closeTab(filename) {
     this.openTabs = this.openTabs.filter((t) => t !== filename);
+    this.dirtySet.delete(filename);
+
     if (this.models[filename]) {
       this.models[filename].dispose();
       delete this.models[filename];
     }
+
     if (this.activeTab === filename) {
       this.activeTab = this.openTabs[this.openTabs.length - 1] || null;
       if (this.activeTab && window.FileTree) {
         this.openFile(this.activeTab, FileTree.getFile(this.activeTab));
+      } else {
+        // 分頁全數關閉，顯示優雅占位畫面
+        if (this.editor) this.editor.setModel(null);
+        if (this.emptyPlaceholderEl) this.emptyPlaceholderEl.style.display = "flex";
+        const statusLang = document.getElementById("status-lang");
+        if (statusLang) statusLang.textContent = "PLAIN";
       }
     }
     this.renderTabs();
+  },
+
+  closeActiveTab() {
+    if (this.activeTab) {
+      this.closeTab(this.activeTab);
+    }
   },
 
   renderTabs() {
@@ -185,6 +216,7 @@ const EditorManager = {
     this.tabBarEl.innerHTML = "";
 
     this.openTabs.forEach((filename) => {
+      const isDirty = this.dirtySet.has(filename);
       const tab = document.createElement("div");
       tab.className = "tab-item" + (filename === this.activeTab ? " active" : "");
 
@@ -192,15 +224,22 @@ const EditorManager = {
       nameSpan.textContent = filename;
       tab.appendChild(nameSpan);
 
+      // 未儲存圓點
+      if (isDirty) {
+        const dirtyDot = document.createElement("span");
+        dirtyDot.className = "tab-dirty-dot";
+        dirtyDot.textContent = "●";
+        dirtyDot.title = "已修改（未儲存）";
+        tab.appendChild(dirtyDot);
+      }
+
       const closeBtn = document.createElement("span");
       closeBtn.className = "tab-close";
       closeBtn.textContent = "×";
-      closeBtn.title = "關閉分頁";
+      closeBtn.title = "關閉分頁 (Ctrl+W)";
       closeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        if (this.openTabs.length > 1) {
-          this.closeTab(filename);
-        }
+        this.closeTab(filename);
       });
       tab.appendChild(closeBtn);
 

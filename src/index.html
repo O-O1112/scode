@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MonoCode — 極簡黑白程式工作台</title>
-  <meta name="description" content="深色、圓潤、高對比的極簡無干擾程式碼編輯與建置工作台。">
+  <title>sCode — 極簡黑白程式工作台</title>
+  <meta name="description" content="深色、圓潤、高對比的極簡無干擾開源程式碼工作台。">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/main.css">
@@ -19,10 +19,12 @@
     <div class="home-container">
       <header class="home-header">
         <div>
-          <div class="brand-title">MONO // CODE</div>
-          <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">極簡無干擾程式工作台</div>
+          <div class="brand-title">sCode // MONO</div>
+          <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">極簡無干擾開源程式工作台</div>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
+          <a href="https://github.com/O-O1112/scode" target="_blank" rel="noopener noreferrer" class="btn btn-sm" id="btn-home-github" style="text-decoration: none;">GitHub</a>
+          <button class="btn btn-sm" id="btn-home-about">關於</button>
           <button class="btn btn-sm btn-primary" id="btn-pwa-install" style="display: none;">安裝至本機</button>
           <div class="status-badge" id="network-status">ONLINE</div>
           <button class="btn btn-sm" id="btn-home-settings">設定</button>
@@ -46,6 +48,7 @@
           <div class="recent-list" id="recent-list">
             <!-- 動態生成近期紀錄 -->
           </div>
+          <div id="storage-stats-text" style="font-size: 11px; color: var(--text-muted); margin-top: 10px; font-family: var(--font-mono);"></div>
         </section>
 
         <section class="card">
@@ -149,6 +152,10 @@
       <main class="center-area">
         <div class="editor-frame">
           <div id="editor-loading-overlay">正在載入 Monaco 編輯器核心...</div>
+          <div id="editor-empty-state">
+            <div style="font-size: 14px; color: var(--text-secondary);">無開啟中的檔案</div>
+            <div style="font-size: 12px; color: var(--text-muted);">使用左側清單開啟檔案、點選「+ 新增」或按 Ctrl+O 開啟本機檔案</div>
+          </div>
           <div id="monaco-container"></div>
           
           <!-- 底部圓潤狀態列 -->
@@ -284,6 +291,10 @@
           <td>折疊 / 展開左側檔案導覽面板</td>
         </tr>
         <tr>
+          <td><kbd>Ctrl</kbd> + <kbd>W</kbd></td>
+          <td>關閉當前分頁檔案</td>
+        </tr>
+        <tr>
           <td><kbd>F2</kbd></td>
           <td>為目前編輯之檔案重新命名</td>
         </tr>
@@ -292,6 +303,35 @@
           <td>開啟或關閉此快捷鍵指南</td>
         </tr>
       </table>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- 彈窗：關於 sCode -->
+  <!-- ========================================================= -->
+  <div id="modal-about" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 460px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">
+        <div style="font-size: 16px; font-weight: 700;">關於 sCode</div>
+        <button class="btn btn-sm" id="btn-close-about" style="padding: 2px 8px;">關閉 (Esc)</button>
+      </div>
+
+      <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px; font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+        <div>
+          <span style="color: #ffffff; font-weight: 600;">sCode 程式工作台</span> (v1.2.0)
+        </div>
+        <div>
+          專為學生、Chrome OS Flex、輕量化裝置與極簡主義開發者打造的無干擾程式碼編輯與建置平台。具備純黑白極簡護眼介面、全離線 PWA、IndexedDB 本機安全持久化與本機資料夾雙向同步能力。
+        </div>
+        <div style="padding: 10px; background-color: #0c0c0c; border: 1px solid var(--border-subtle); border-radius: 8px;">
+          <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px; font-weight: 600;">隱私承諾</div>
+          <div style="font-size: 12px; color: #cccccc;">所有程式碼與資料僅存在您的瀏覽器 IndexedDB 或選定之本機磁碟資料夾中，絕不上傳至任何遠端伺服器。</div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 10px; font-size: 12px; color: var(--text-muted);">
+          <span>開放原始碼專案 (MIT License)</span>
+          <a href="https://github.com/O-O1112/scode" target="_blank" rel="noopener noreferrer" style="color: #ffffff; text-decoration: underline;">GitHub 原始碼庫</a>
+        </div>
+      </div>
     </div>
   </div>
 

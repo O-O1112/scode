@@ -1,5 +1,5 @@
 /**
- * MonoCode 完整冒煙與架構規格自動化驗證測試
+ * sCode 完整冒煙與架構規格自動化驗證測試
  */
 const assert = require("assert");
 const fs = require("fs");
@@ -7,7 +7,7 @@ const path = require("path");
 const vm = require("vm");
 
 function runSmokeTests() {
-  console.log("開始執行 MonoCode 全面規格與邏輯冒煙測試...");
+  console.log("開始執行 sCode 全面規格與邏輯冒煙測試...");
 
   const rootDir = path.join(__dirname, "..");
   const srcDir = path.join(rootDir, "src");
@@ -56,6 +56,9 @@ function runSmokeTests() {
   assert.ok(indexHtml.includes('id="view-workspace"'), "缺少工作區視圖容器");
   assert.ok(indexHtml.includes('id="modal-settings"'), "缺少偏好設定彈窗容器");
   assert.ok(indexHtml.includes('id="modal-shortcuts"'), "缺少快捷鍵彈窗容器");
+  assert.ok(indexHtml.includes('id="modal-about"'), "缺少關於彈窗容器");
+  assert.ok(indexHtml.includes('id="editor-empty-state"'), "缺少編輯器空狀態占位");
+  assert.ok(indexHtml.includes('id="storage-stats-text"'), "缺少儲存容量統計指示");
   assert.ok(indexHtml.includes('id="btn-pwa-install"'), "缺少 PWA 安裝按鈕");
   assert.ok(indexHtml.includes('id="btn-workspace-export"'), "缺少專案匯出 ZIP 按鈕");
   console.log("✓ SPA 三大視圖與彈窗組件結構驗證通過。");

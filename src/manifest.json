@@ -1,7 +1,7 @@
 {
-  "name": "MonoCode 極簡工作台",
-  "short_name": "MonoCode",
-  "description": "深色極簡黑白無干擾程式碼編輯與建置工作台",
+  "name": "sCode 程式工作台",
+  "short_name": "sCode",
+  "description": "專為學生、低硬體規格裝置與極簡主義者打造的正式開源 Web 程式碼工作台",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#000000",

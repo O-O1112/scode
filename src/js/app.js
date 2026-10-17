@@ -1,5 +1,5 @@
 /**
- * MonoCode 應用程式主邏輯與視圖調度器 (完整原生工程版)
+ * sCode 應用程式主邏輯與視圖調度器 (正式發布版)
  */
 const App = {
   currentProject: null,
@@ -15,6 +15,7 @@ const App = {
     this.initNetworkWatcher();
     this.initPwaInstall();
     this.initSettingsModal();
+    this.initAboutModal();
 
     // 啟動 Monaco
     EditorManager.init(
@@ -100,6 +101,8 @@ const App = {
     this.btnScratch = document.getElementById("btn-home-scratch");
     this.recentListEl = document.getElementById("recent-list");
     this.fileInputHidden = document.getElementById("file-input-hidden");
+    this.btnHomeAbout = document.getElementById("btn-home-about");
+    this.storageStatsEl = document.getElementById("storage-stats-text");
 
     // 建立專案精靈元素
     this.inputProjectName = document.getElementById("wizard-project-name");
@@ -130,6 +133,34 @@ const App = {
     this.modalSettings = document.getElementById("modal-settings");
     this.btnCloseSettings = document.getElementById("btn-close-settings");
     this.btnHomeSettings = document.getElementById("btn-home-settings");
+
+    // 關於彈窗
+    this.modalAbout = document.getElementById("modal-about");
+    this.btnCloseAbout = document.getElementById("btn-close-about");
+  },
+
+  initAboutModal() {
+    if (this.btnHomeAbout) {
+      this.btnHomeAbout.addEventListener("click", () => this.toggleAboutModal(true));
+    }
+    if (this.btnCloseAbout) {
+      this.btnCloseAbout.addEventListener("click", () => this.toggleAboutModal(false));
+    }
+    if (this.modalAbout) {
+      this.modalAbout.addEventListener("click", (e) => {
+        if (e.target === this.modalAbout) this.toggleAboutModal(false);
+      });
+    }
+  },
+
+  toggleAboutModal(forceState) {
+    if (!this.modalAbout) return;
+    if (forceState !== undefined) {
+      if (forceState) this.modalAbout.classList.remove("hidden");
+      else this.modalAbout.classList.add("hidden");
+    } else {
+      this.modalAbout.classList.toggle("hidden");
+    }
   },
 
   initSettingsModal() {
@@ -199,7 +230,6 @@ const App = {
   },
 
   initViews() {
-    // 主頁事件
     this.btnNewProject.addEventListener("click", () => this.switchView("wizard"));
     this.btnOpenFile.addEventListener("click", () => this.openLocalFile());
     if (this.btnOpenFolder) {
@@ -212,7 +242,6 @@ const App = {
 
     this.fileInputHidden.addEventListener("change", (e) => this.handleFallbackFileInput(e));
 
-    // 精靈事件
     this.templateCards.forEach((card) => {
       card.addEventListener("click", () => {
         this.templateCards.forEach((c) => c.classList.remove("active"));
@@ -226,7 +255,6 @@ const App = {
     this.btnCreateSubmit.addEventListener("click", () => this.submitCreateProject());
     this.btnCreateCancel.addEventListener("click", () => this.switchView("home"));
 
-    // 工作區事件
     this.btnBackHome.addEventListener("click", async () => {
       if (this.currentProject) {
         await Storage.saveProject(this.currentProject);
@@ -243,7 +271,6 @@ const App = {
     this.btnCloseOutput.addEventListener("click", () => Runner.hide());
     this.btnClearOutput.addEventListener("click", () => Runner.clearLog());
 
-    // 專案名稱點擊重新命名
     this.projectNameTag.addEventListener("click", async () => {
       if (!this.currentProject) return;
       const newName = prompt("重新命名專案：", this.currentProject.name);
@@ -254,7 +281,6 @@ const App = {
       }
     });
 
-    // 彈窗關閉
     this.btnCloseShortcuts.addEventListener("click", () => this.toggleShortcutsModal(false));
     this.modalShortcuts.addEventListener("click", (e) => {
       if (e.target === this.modalShortcuts) this.toggleShortcutsModal(false);
@@ -277,10 +303,12 @@ const App = {
       onEscape: () => {
         this.toggleShortcutsModal(false);
         this.toggleSettingsModal(false);
+        this.toggleAboutModal(false);
       }
     });
 
     window.addEventListener("keydown", (e) => {
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey;
       // F2 鍵為目前編輯檔案重新命名
       if (e.key === "F2" && this.activeView === "workspace" && FileTree.activeFile) {
         e.preventDefault();
@@ -288,6 +316,11 @@ const App = {
         if (activeNode) {
           FileTree.startInlineRename(FileTree.activeFile, activeNode);
         }
+      }
+      // Ctrl + W 關閉當前分頁
+      if (isCtrlOrCmd && e.key.toLowerCase() === "w" && this.activeView === "workspace") {
+        e.preventDefault();
+        EditorManager.closeActiveTab();
       }
     });
   },
@@ -304,6 +337,7 @@ const App = {
 
     if (viewName === "home") {
       await this.renderRecentProjects();
+      await this.renderStorageStats();
     } else if (viewName === "wizard") {
       this.inputProjectName.value = "my-project";
       this.updateWizardPreview();
@@ -314,12 +348,30 @@ const App = {
     }
   },
 
+  async renderStorageStats() {
+    if (!this.storageStatsEl) return;
+    try {
+      const list = await Storage.getAllProjects();
+      const count = list.length;
+      let totalBytes = 0;
+      list.forEach((p) => {
+        if (p.files) {
+          Object.values(p.files).forEach((c) => { totalBytes += (c || "").length; });
+        }
+      });
+      const kb = (totalBytes / 1024).toFixed(1);
+      this.storageStatsEl.textContent = `本機 IndexedDB：已儲存 ${count} 個專案 (約 ${kb} KB)，100% 離線隱私安全`;
+    } catch (e) {
+      this.storageStatsEl.textContent = "本機離線安全儲存環境已就緒";
+    }
+  },
+
   async renderRecentProjects() {
     const list = await Storage.getAllProjects();
     this.recentListEl.innerHTML = "";
 
     if (list.length === 0) {
-      this.recentListEl.innerHTML = '<div class="empty-hint">暫無本機專案紀錄</div>';
+      this.recentListEl.innerHTML = '<div class="empty-hint">暫無本機專案紀錄，點選上方「建立新專案」開始</div>';
       return;
     }
 
@@ -352,9 +404,10 @@ const App = {
       delBtn.style.fontSize = "11px";
       delBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        if (confirm(`確定要從資料庫中刪除專案「${p.name}」？`)) {
+        if (confirm(`確定要從本機資料庫中刪除專案「${p.name}」？`)) {
           await Storage.deleteProject(p.id);
           this.renderRecentProjects();
+          this.renderStorageStats();
         }
       });
       item.appendChild(delBtn);
@@ -485,7 +538,7 @@ const App = {
 
   async openLocalDirectory() {
     if (!window.showDirectoryPicker) {
-      alert("您的瀏覽器暫不支援直接選取資料夾，請使用「開啟本機檔案」或拖曳檔案匯入。");
+      alert("您的瀏覽器暫不支援直接選取資料夾，請使用「開啟單一檔案」或拖曳檔案匯入。");
       return;
     }
     try {
@@ -496,7 +549,6 @@ const App = {
         if (entry.kind === "file") {
           try {
             const f = await entry.getFile();
-            // 讀取常見代碼與文字檔案
             if (f.size < 5 * 1024 * 1024) {
               files[entry.name] = await f.text();
             }
@@ -507,7 +559,7 @@ const App = {
       }
 
       if (Object.keys(files).length === 0) {
-        files["index.txt"] = "此本機資料夾無可讀文字檔案";
+        files["index.txt"] = "";
       }
 
       const project = {
@@ -551,8 +603,8 @@ const App = {
     const activeFileName = FileTree.activeFile;
     const content = EditorManager.getValue();
     await FileTree.setFileContent(activeFileName, content);
+    EditorManager.markSaved(activeFileName);
 
-    // 若有單一檔案控制代碼
     if (this.currentProject.fileHandle && window.showSaveFilePicker) {
       try {
         const writable = await this.currentProject.fileHandle.createWritable();
@@ -565,7 +617,6 @@ const App = {
       }
     }
 
-    // 若為資料夾連動模式，FileTree.setFileContent 已自動寫回實體檔案
     if (this.currentProject.dirHandle) {
       const statusCursor = document.getElementById("status-cursor");
       if (statusCursor) {
@@ -576,7 +627,6 @@ const App = {
       return;
     }
 
-    // 瀏覽器下載另存
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
