@@ -140,6 +140,7 @@ const App = {
     const inputTabSize = document.getElementById("setting-tab-size");
     const inputWordWrap = document.getElementById("setting-word-wrap");
     const inputMinimap = document.getElementById("setting-minimap");
+    const inputTheme = document.getElementById("setting-theme");
     const btnFormat = document.getElementById("btn-format-code");
     const btnClearData = document.getElementById("btn-clear-data");
 
@@ -147,18 +148,20 @@ const App = {
     if (inputTabSize) inputTabSize.value = settings.tabSize;
     if (inputWordWrap) inputWordWrap.value = settings.wordWrap;
     if (inputMinimap) inputMinimap.value = settings.minimap ? "true" : "false";
+    if (inputTheme) inputTheme.value = settings.theme || "mono-dark";
 
     const saveAndApply = () => {
       const updated = Storage.saveSettings({
         fontSize: parseInt(inputFontSize.value, 10),
         tabSize: parseInt(inputTabSize.value, 10),
         wordWrap: inputWordWrap.value,
-        minimap: inputMinimap.value === "true"
+        minimap: inputMinimap.value === "true",
+        theme: inputTheme ? inputTheme.value : "mono-dark"
       });
       EditorManager.applySettings(updated);
     };
 
-    [inputFontSize, inputTabSize, inputWordWrap, inputMinimap].forEach((el) => {
+    [inputFontSize, inputTabSize, inputWordWrap, inputMinimap, inputTheme].forEach((el) => {
       if (el) el.addEventListener("change", saveAndApply);
     });
 

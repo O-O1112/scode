@@ -11,7 +11,8 @@ const Storage = {
     tabSize: 2,
     wordWrap: "on",
     minimap: false,
-    autoSave: true
+    autoSave: true,
+    theme: "mono-dark"
   },
 
   getRecentProjects() {
