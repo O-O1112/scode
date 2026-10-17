@@ -403,7 +403,7 @@ const App = {
       name: "速寫專案",
       type: "python",
       files: {
-        "scratch.py": '# 速寫 Python 腳本 (支援 input() 與 WASM 原生執行)\nname = input("請輸入您的名字：")\nprint(f"你好, {name}！歡迎使用 MonoCode。")\n'
+        "scratch.py": ""
       }
     };
     await Storage.saveProject(scratchProject);
