@@ -1,0 +1,16 @@
+# 環境變數與機密
+.env
+*.local
+
+# 系統暫存檔案
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 編輯器與暫存檔案
+*.log
+.vscode/
+.idea/
+
+# 依賴目錄 (若未來擴充)
+node_modules/

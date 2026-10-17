@@ -1,0 +1,9 @@
+services:
+  web:
+    image: nginx:alpine
+    container_name: monocode-editor
+    ports:
+      - "${PORT:-8080}:80"
+    volumes:
+      - ./src:/usr/share/nginx/html:ro
+    restart: unless-stopped

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MonoCode — 極簡黑白程式工作台</title>
+  <meta name="description" content="深色、圓潤、高對比的極簡無干擾程式碼編輯與建置工作台。">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/main.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+</head>
+<body>
+
+  <!-- ========================================================= -->
+  <!-- 視圖一：主頁 (Home View) -->
+  <!-- ========================================================= -->
+  <div id="view-home" class="view">
+    <div class="home-container">
+      <header class="home-header">
+        <div>
+          <div class="brand-title">MONO // CODE</div>
+          <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">極簡無干擾程式工作台</div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button class="btn btn-sm btn-primary" id="btn-pwa-install" style="display: none;">安裝至本機</button>
+          <div class="status-badge" id="network-status">ONLINE</div>
+          <button class="btn btn-sm" id="btn-home-settings">設定</button>
+          <button class="btn btn-sm" id="btn-home-shortcuts">快捷鍵 (F1)</button>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="section-title">快速開始</div>
+        <div class="quick-actions">
+          <button class="btn btn-primary" id="btn-home-new">+ 建立新專案</button>
+          <button class="btn" id="btn-home-open">開啟本機檔案 (Ctrl+O)</button>
+          <button class="btn" id="btn-home-scratch">空白單檔速寫</button>
+        </div>
+      </section>
+
+      <div class="home-grid">
+        <section class="card">
+          <div class="section-title">近期專案</div>
+          <div class="recent-list" id="recent-list">
+            <!-- 動態生成近期紀錄 -->
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="section-title">環境與支援</div>
+          <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text-secondary);">
+            <div>- 支援語言：HTML5、Python (WASM)、Lua、JavaScript</div>
+            <div>- 核心引擎：Microsoft Monaco (深黑高對比 `hc-black`)</div>
+            <div>- 離線能力：已就緒 (PWA Service Worker 快取)</div>
+            <div>- 儲存整合：Chrome 原生 File System Access API</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- 視圖二：建立專案引導精靈 (Wizard View) -->
+  <!-- ========================================================= -->
+  <div id="view-wizard" class="view hidden">
+    <div class="wizard-box">
+      <div class="wizard-header">
+        <div>
+          <div style="font-size: 18px; font-weight: 700;">建立新專案</div>
+          <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">選取專案範本並設定名稱</div>
+        </div>
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px;">專案名稱</label>
+        <input type="text" id="wizard-project-name" class="input-rounded" value="my-project" placeholder="請輸入專案名稱...">
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">專案範本</label>
+        <div class="template-grid">
+          <div class="template-card active" data-type="web">
+            <div class="name">HTML5 網頁應用</div>
+            <div class="desc">包含 index.html, style.css, app.js</div>
+          </div>
+          <div class="template-card" data-type="python">
+            <div class="name">Python 程式專案</div>
+            <div class="desc">包含 main.py, README.md</div>
+          </div>
+          <div class="template-card" data-type="lua">
+            <div class="name">Lua 腳本專案</div>
+            <div class="desc">包含 main.lua</div>
+          </div>
+          <div class="template-card" data-type="js">
+            <div class="name">JavaScript / Node</div>
+            <div class="desc">包含 index.js, package.json</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px;">即將建立的檔案結構</label>
+        <div id="wizard-preview" class="preview-box"></div>
+      </div>
+
+      <div class="wizard-footer">
+        <button class="btn" id="btn-wizard-cancel">返回主頁</button>
+        <button class="btn btn-primary" id="btn-wizard-submit">建立並進入工作區</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- 視圖三：程式工作區與建置頁 (Workspace View) -->
+  <!-- ========================================================= -->
+  <div id="view-workspace" class="view hidden">
+    <!-- 頂部操作列 -->
+    <header class="workspace-topbar">
+      <button class="btn btn-sm" id="btn-workspace-home">&lt; 主頁</button>
+      <div class="project-tag" id="workspace-project-name" title="點擊可重新命名專案">my-project</div>
+      
+      <div class="tab-bar" id="tab-bar">
+        <!-- 動態分頁標籤 -->
+      </div>
+
+      <button class="btn btn-sm" id="btn-toggle-sidebar" title="切換側邊欄 (Ctrl+B)">側邊欄</button>
+      <button class="btn btn-sm" id="btn-workspace-settings" title="偏好設定">設定</button>
+      <button class="btn btn-sm" id="btn-workspace-export" title="將整個專案打包為 ZIP 下載">匯出 ZIP</button>
+      <button class="btn btn-sm" id="btn-workspace-save">儲存 (Ctrl+S)</button>
+      <button class="btn btn-sm btn-primary" id="btn-workspace-run">執行 / 建置 (Ctrl+Enter)</button>
+    </header>
+
+    <!-- 工作區主體 -->
+    <div class="workspace-main">
+      <!-- 左側檔案總管 -->
+      <aside class="file-sidebar" id="file-sidebar">
+        <div class="sidebar-header">
+          <span>專案檔案 (可拖入)</span>
+          <button class="btn btn-sm" id="btn-sidebar-add" style="padding: 2px 8px; font-size: 11px;">+ 新增</button>
+        </div>
+        <div class="file-list" id="file-list">
+          <!-- 動態生成檔案節點 -->
+        </div>
+      </aside>
+
+      <!-- 中央編輯器與下方建置輸出 -->
+      <main class="center-area">
+        <div class="editor-frame">
+          <div id="editor-loading-overlay">正在載入 Monaco 編輯器核心...</div>
+          <div id="monaco-container"></div>
+          
+          <!-- 底部圓潤狀態列 -->
+          <footer class="editor-statusbar">
+            <div class="status-group">
+              <span id="status-cursor">Ln 1, Col 1</span>
+              <span class="status-sep">|</span>
+              <span id="status-encoding">UTF-8</span>
+            </div>
+            <div class="status-group">
+              <span id="status-lang">PYTHON</span>
+            </div>
+          </footer>
+        </div>
+
+        <!-- 建置與執行輸出抽屜 -->
+        <div class="output-drawer hidden" id="output-drawer">
+          <div class="output-header">
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span id="output-title">執行輸出</span>
+              <div style="display: flex; gap: 4px; margin-left: 8px;">
+                <button id="tab-output-console" class="output-tab-btn active">主控台日誌</button>
+                <button id="tab-output-preview" class="output-tab-btn" style="display: none;">畫面預覽</button>
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button class="btn btn-sm" id="btn-maximize-output" style="padding: 2px 8px; font-size: 11px;">全螢幕</button>
+              <button class="btn btn-sm" id="btn-clear-output" style="padding: 2px 8px; font-size: 11px;">清空</button>
+              <button class="btn btn-sm" id="btn-close-output" style="padding: 2px 8px; font-size: 11px;">關閉</button>
+            </div>
+          </div>
+          <div class="output-body">
+            <div id="console-log"></div>
+            <iframe id="preview-frame" sandbox="allow-scripts allow-modals"></iframe>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- 彈窗：偏好設定 -->
+  <!-- ========================================================= -->
+  <div id="modal-settings" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">
+        <div style="font-size: 16px; font-weight: 700;">編輯器偏好設定</div>
+        <button class="btn btn-sm" id="btn-close-settings" style="padding: 2px 8px;">關閉 (Esc)</button>
+      </div>
+
+      <div class="setting-row">
+        <span>字體大小 (Font Size)</span>
+        <select id="setting-font-size" class="select-rounded">
+          <option value="12">12 px</option>
+          <option value="14" selected>14 px (預設)</option>
+          <option value="16">16 px</option>
+          <option value="18">18 px</option>
+          <option value="20">20 px</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <span>縮排空格數 (Tab Size)</span>
+        <select id="setting-tab-size" class="select-rounded">
+          <option value="2" selected>2 空格</option>
+          <option value="4">4 空格</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <span>自動折行 (Word Wrap)</span>
+        <select id="setting-word-wrap" class="select-rounded">
+          <option value="on" selected>開啟 (On)</option>
+          <option value="off">關閉 (Off)</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <span>代碼縮圖 (Minimap)</span>
+        <select id="setting-minimap" class="select-rounded">
+          <option value="false" selected>隱藏 (極簡模式)</option>
+          <option value="true">顯示</option>
+        </select>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; gap: 8px; margin-top: 8px;">
+        <button class="btn btn-sm" id="btn-format-code">格式化目前檔案</button>
+        <button class="btn btn-sm" id="btn-clear-data" style="color: #ff6b6b; border-color: #552222;">重置本機所有快取</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- 彈窗：全域快捷鍵指南 -->
+  <!-- ========================================================= -->
+  <div id="modal-shortcuts" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px;">
+        <div style="font-size: 16px; font-weight: 700;">全域快捷鍵</div>
+        <button class="btn btn-sm" id="btn-close-shortcuts" style="padding: 2px 8px;">關閉 (Esc)</button>
+      </div>
+      <table class="shortcut-table">
+        <tr>
+          <td><kbd>Ctrl</kbd> + <kbd>S</kbd></td>
+          <td>儲存當前檔案至本機磁碟</td>
+        </tr>
+        <tr>
+          <td><kbd>Ctrl</kbd> + <kbd>O</kbd></td>
+          <td>開啟本機檔案至工作區</td>
+        </tr>
+        <tr>
+          <td><kbd>Ctrl</kbd> + <kbd>Enter</kbd></td>
+          <td>執行或建置當前專案</td>
+        </tr>
+        <tr>
+          <td><kbd>Ctrl</kbd> + <kbd>B</kbd></td>
+          <td>折疊 / 展開左側檔案導覽面板</td>
+        </tr>
+        <tr>
+          <td><kbd>F1</kbd></td>
+          <td>開啟或關閉此快捷鍵指南</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 降級本機開檔 Input -->
+  <input type="file" id="file-input-hidden" style="display: none;">
+
+  <!-- 應用程式腳本模組 -->
+  <script src="js/storage.js"></script>
+  <script src="js/templates.js"></script>
+  <script src="js/file-tree.js"></script>
+  <script src="js/runner.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/shortcuts.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

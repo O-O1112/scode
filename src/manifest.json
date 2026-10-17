@@ -1,0 +1,18 @@
+{
+  "name": "MonoCode 極簡工作台",
+  "short_name": "MonoCode",
+  "description": "深色極簡黑白無干擾程式碼編輯與建置工作台",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
